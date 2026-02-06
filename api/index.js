@@ -7,24 +7,42 @@ import contactRoutes from "../routes/contactRoutes.js";
 dotenv.config();
 
 const app = express();
-
 app.use(cors());
 app.use(express.json());
 
-app.use("/api", contactRoutes);
+let cached = global.mongoose;
 
-let isConnected = false;
+if (!cached) {
+  cached = global.mongoose = { conn: null, promise: null };
+}
 
 async function connectDB() {
-  if (isConnected) return;
-  await mongoose.connect(process.env.MONGO_URI);
-  isConnected = true;
-  console.log("MongoDB connected");
+  if (cached.conn) return cached.conn;
+
+  if (!cached.promise) {
+    if (!process.env.MONGO_URI) {
+      throw new Error("MONGO_URI missing");
+    }
+
+    cached.promise = mongoose
+      .connect(process.env.MONGO_URI)
+      .then((mongoose) => mongoose);
+  }
+
+  cached.conn = await cached.promise;
+  return cached.conn;
 }
 
 app.use(async (req, res, next) => {
-  await connectDB();
-  next();
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    console.error("Mongo error:", err);
+    res.status(500).json({ message: "Database connection failed" });
+  }
 });
+
+app.use("/api", contactRoutes);
 
 export default app;

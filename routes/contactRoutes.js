@@ -1,8 +1,3 @@
-import express from "express";
-import Contact from "../models/Contact.js";
-
-const router = express.Router();
-
 router.post("/contact", async (req, res) => {
   try {
     const { name, email, subject, message } = req.body;
@@ -14,9 +9,8 @@ router.post("/contact", async (req, res) => {
     await Contact.create({ name, email, subject, message });
 
     res.status(201).json({ message: "Message saved successfully" });
-  } catch (error) {
+  } catch (err) {
+    console.error("Contact save error:", err);
     res.status(500).json({ message: "Server error" });
   }
 });
-
-export default router;
